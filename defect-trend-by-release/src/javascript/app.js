@@ -86,6 +86,7 @@ Ext.define('CustomApp', {
             sort: {
                 "_ValidFrom": 1
             },
+            chartColors: ['#000000','#CC3366','#66FF66'],
             chartConfig: {
                 chart: {
                     zoomType: "xy"
