@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Defect Trend By Release</title>
+    <!--  (c) 2014 Rally Software Development Corp.  All Rights Reserved. -->
+    <!--  Build Date: Sun Jun 01 2014 15:42:23 GMT-0700 (PDT) -->
+    
+    <script type="text/javascript">
+        var APP_BUILD_DATE = "Sun Jun 01 2014 15:42:23 GMT-0700 (PDT)";
+        var CHECKSUM = 6293057736;
+    </script>
+    
+    <script type="text/javascript" src="/apps/2.0rc2/sdk.js"></script>
+
+    <script type="text/javascript">
+        Rally.onReady(function() {
+             
+Ext.define("TechnicalServices.burndown.DefectTrendCalculator", {
+    extend: "Rally.data.lookback.calculator.TimeSeriesCalculator",
+
+    config: {
+        closedStateNames: 'Closed',
+        releaseObjectIDs: [] /* leave empty to do ANY value */
+    },
+    
+    getDerivedFieldsOnInput: function () {
+        var completedStates = this.config.closedStateNames
+        var releases = this.config.releaseObjectIDs;
+        /*
+         * What is more or less going on here:  After the overall snapshots
+         * have been parsed by luminize, we get a subset of snapshots that 
+         * represent the items as they are in each time box.  We can now
+         * add fields that can represent collated information about each item --
+         * for example, we'll determine whether each item is an active defect:
+         * is it: a) not closed and b) in one of the given releases?
+         * 
+         * Then later we can apply functions to say all the ones that are true
+         * and all the ones that are false
+         */
+        return [
+            {
+                "as": "ActiveDefectInRelease",
+                "f": function (snapshot) {
+                    var state = snapshot.State;
+                    var release = snapshot.Release;
+                    
+                    if (Ext.Array.indexOf(completedStates,state) == -1) {
+                        if ( releases.length === 0 || Ext.Array.indexOf(releases,release) > -1) {
+                            return true;
+                        }
+                    }
+                    return false;
+                }
+            },
+            {
+                "as": "ClosedDefectInRelease",
+                "f": function (snapshot) {
+                    var state = snapshot.State;
+                    var release = snapshot.Release;
+                    
+                    if (Ext.Array.indexOf(completedStates,state) > -1) {
+                        if ( releases.length === 0 || Ext.Array.indexOf(releases,release) > -1) {
+                            return true;
+                        }
+                    }
+                    return false;
+                }
+            },
+            {
+                "as": "InRelease",
+                "f": function (snapshot) {
+                    var release = snapshot.Release;
+                    
+                    if ( releases.length === 0 || Ext.Array.indexOf(releases,release) > -1) {
+                        return true;
+                    }
+                    return false;
+                }
+            }
+        ];
+    },
+
+    getMetrics: function () {
+        return [
+            {
+                "filterField": "ActiveDefectInRelease",
+                "as": "Daily Active",
+                "f": "filteredCount",
+                "filterValues": [true]
+            },
+            {
+                "filterField": "ClosedDefectInRelease",
+                "as": "Cumulative Closed",
+                "f": "filteredCount",
+                "filterValues": [true]
+            },
+            {
+                "filterField": "InRelease",
+                'as':'Cumulative Created',
+                'f':'filteredCount',
+                'filterValues':[true]
+            }
+        ];
+    },
+
+    getSummaryMetricsConfig: function () {
+        return [];
+    },
+
+    getDerivedFieldsAfterSummary: function () {
+        return  [];
+    },
+
+    runCalculation: function (snapshots) {
+        var chartData = this.callParent(arguments);
+        var today = Rally.util.DateTime.add(new Date(),"day",1); //include today
+        Ext.Array.each(chartData.series,function(series,idx){
+            this._removeFutureSeries(chartData, idx, this._indexOfDate(chartData,today,true));
+        },this);
+
+        this._formatCategories(chartData);
+        console.log(chartData);
+        return chartData;
+    },
+    
+    _formatCategories:function(chartData){
+        var categories = [];
+        Ext.Array.each(chartData.categories,function(category) {
+            var date_array = category.split('-');
+            categories.push(date_array[1] + "/" + date_array[2]);
+        });
+        
+        chartData.categories = categories;
+        
+    },
+
+    _indexOfDate: function(chartData, date, find_next_day_if_missing ) {
+         var dateStr = Ext.Date.format(date, 'Y-m-d');
+         var categories = chartData.categories;
+         
+         var idx = Ext.Array.indexOf(categories,dateStr);
+         if ( idx > -1 ) {
+            return idx;
+         }
+         if ( find_next_day_if_missing ) {
+            var test_idx = categories.length - 1;
+            while ( test_idx > -1 ) {
+                if (categories[test_idx] > dateStr ) {
+                    break;
+                }
+                test_idx = test_idx - 1;
+            }
+            return test_idx;
+         }
+         return -1;
+    },
+    
+    _removeFutureSeries: function (chartData, seriesIndex, cutOffIndex ) { 
+        
+        if(chartData.series[seriesIndex].data.length > cutOffIndex && cutOffIndex > -1) {
+            var idx = cutOffIndex;
+            
+            while(idx < chartData.series[seriesIndex].data.length) {
+                chartData.series[seriesIndex].data[idx] = null;
+                idx++;
+            }
+        }
+    }
+});
+/**
+ * A link that pops up a version dialog box
+ */
+
+Ext.define('Rally.technicalservices.InfoLink',{
+    extend: 'Ext.Component',
+    alias: 'widget.tsinfolink',
+    
+    /**
+     * @cfg {String} informationHtml
+     * Additional text to be displayed on the popup dialog (for exmaple,
+     * to add a description of the app's use or functionality)
+     */
+    informationHtml: null,
+    
+    /**
+     * 
+     * cfg {String} title
+     * The title for the dialog box
+     */
+     title: "Build Information",
+    
+    renderTpl: "<div id='{id}-infolinkWrap' class='tsinfolink'>--</div>",
+
+    initComponent: function() {
+        this.callParent(arguments);
+       
+    },
+    
+    onRender: function() {
+        this.callParent(arguments);
+        this.mon(this.el,'click',this.onClick,this);
+    },
+    _generateChecksum: function(string){
+        var chk = 0x12345678,
+            i;
+        string = string.replace(/var CHECKSUM = .*;/,"");
+        
+        for (i = 0; i < string.length; i++) {
+            chk += (string.charCodeAt(i) * i);
+        }
+    
+        return chk;
+    },
+    _checkChecksum: function(container) {
+        var me = this;
+        Ext.Ajax.request({
+            url: document.URL,
+            params: {
+                id: 1
+            },
+            success: function (response) {
+                text = response.responseText;
+                if ( CHECKSUM ) {
+                    if ( CHECKSUM !== me._generateChecksum(text) ) {
+                        console.log("Checksums don't match!");
+                        if ( me.dialog ) {
+                            me.dialog.add({xtype:'container',html:'Checksums do not match'});
+                        }
+                    }
+                }
+            }
+        });
+    },
+    onClick: function(e) {
+        var me = this;
+        this._checkChecksum(this);
+        
+        var dialog_items = [];
+        
+        if ( this.informationHtml ) {
+            dialog_items.push({
+                xtype:'container',
+                html: this.informationHtml
+            });
+        }
+                
+        dialog_items.push({
+            xtype:'container',
+            html:"This app was created by the Rally Technical Services Team."
+        });
+        
+        if ( APP_BUILD_DATE ) {
+            dialog_items.push({
+                xtype:'container',
+                html:'Build date/time: ' + APP_BUILD_DATE
+            });
+        }
+        
+        if (this.dialog){this.dialog.destroy();}
+        this.dialog = Ext.create('Rally.ui.dialog.Dialog',{
+            defaults: { padding: 5, margin: 5 },
+            closable: true,
+            draggable: true,
+            title: me.title,
+            items: dialog_items
+        });
+        this.dialog.show();
+    }
+});
+
+/*
+ */
+Ext.define('Rally.technicalservices.Logger',{
+    constructor: function(config){
+        Ext.apply(this,config);
+    },
+    log: function(args){
+        var timestamp = "[ " + Ext.util.Format.date(new Date(), "Y-m-d H:i:s.u") + " ]";
+        //var output_args = arguments;
+        //output_args.unshift( [ "[ " + timestamp + " ]" ] );
+        //output_args = Ext.Array.push(output_args,arguments);
+        
+        var output_args = [];
+        output_args = Ext.Array.push(output_args,[timestamp]);
+        output_args = Ext.Array.push(output_args, Ext.Array.slice(arguments,0));
+
+        window.console && console.log.apply(console,output_args);
+    }
+
+});
+
+Ext.define('CustomApp', {
+    extend: 'Rally.app.App',
+    componentCls: 'app',
+    logger: new Rally.technicalservices.Logger(),
+    defaults: { margin: 5, padding: 5 },
+    items: [
+        {xtype:'container',itemId:'selector_box'},
+        {xtype:'container',itemId:'display_box'},
+        {xtype:'tsinfolink'}
+    ],
+    launch: function() {
+        this.down('#selector_box').add({
+            xtype:'rallyreleasecombobox',
+            fieldLabel: 'Release:',
+            labelWidth: 45,
+            listeners: {
+                scope: this,
+                change: function(box) {
+                    this._getData(box.getRecord().get('Name'));
+                }
+            }
+        });
+    },
+    _getData: function(release_name) {
+        this._getReleases(release_name).then({
+            scope: this,
+            success: function(releases){
+                this._makeChart(this.down('#display_box'),releases);
+            }, 
+            failure: function(message) {
+                alert("Problem Loading Releases " + message);
+            }
+        });
+    },
+    _getReleases: function(release_name) {
+        var deferred = Ext.create('Deft.Deferred');
+        Ext.create('Rally.data.wsapi.Store',{
+            model:'Release',
+            autoLoad:true,
+            fetch:['ObjectID','ReleaseDate','ReleaseStartDate'],
+            filters: [{property:'Name',value:release_name}],
+            listeners:{
+                load: function(store,records){
+                    deferred.resolve(records);
+                }
+            }
+        });
+        return deferred;
+    },
+    _makeChart: function(display_box,releases) {
+        this.logger.log("_makeChart",releases);
+        
+        var release_oids = [];
+        Ext.Array.each(releases,function(release){
+            release_oids.push(release.get('ObjectID'));
+        });
+        
+        var startDate = Rally.util.DateTime.add(new Date,'month',-3);
+        var endDate = new Date();
+        if ( releases.length ) {
+            startDate = releases[0].get('ReleaseStartDate');
+            endDate = releases[0].get('ReleaseDate');
+        }
+        
+        display_box.removeAll();
+        display_box.add({
+            xtype:'rallychart',
+            storeType: 'Rally.data.lookback.SnapshotStore',
+            storeConfig: {
+                find: {
+                    _TypeHierarchy: 'Defect',
+                    _ProjectHierarchy: this.getContext().getProject().ObjectID
+                },
+                fetch: ['PlanEstimate','State','Release'],
+                hydrate: ['State']
+            },
+            calculatorType: 'TechnicalServices.burndown.DefectTrendCalculator',
+            calculatorConfig: {
+                releaseObjectIDs:release_oids,
+                timeZone: "America/Denver",
+                startDate: startDate,
+                endDate: endDate,
+                granularity: 'day',
+                workDays: ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday']
+            },
+            sort: {
+                "_ValidFrom": 1
+            },
+            chartConfig: {
+                chart: {
+                    zoomType: "xy"
+                },
+                title: { text: 'Defect Trend' },
+                xAxis: {
+                    tickmarkPlacement: 'on',
+                    tickInterval: 14,
+                    title: { text: 'Days' },
+                    labels: { rotation: -65, align: 'right' }
+                },
+                yAxis: [{
+                    min: 0,
+                    title:{text:'Count'}
+                }],
+                tooltip: {
+                    shared: true
+                }
+            }
+        });
+    }
+});
+
+            
+               Rally.launchApp('CustomApp', {
+                   name: 'Defect Trend By Release'
+               });
+        });
+    </script>
+    
+    <style type="text/css">
+
+.app {
+}
+.tsinfolink {
+    position:absolute;
+    right:0px;
+    width:5%;
+}
+    </style>
+
+</head>
+<body></body>
+</html>
