@@ -47,6 +47,13 @@ Ext.define('CustomApp', {
         });
         return deferred;
     },
+    _getUserTimeZone: function() {
+        var tz = this.getContext().getUser().UserProfile.TimeZone;
+        if (!tz) {
+            tz = this.getContext().getWorkspace().WorkspaceConfiguration.TimeZone;
+        }
+        return tz;
+    },
     _makeChart: function(display_box,releases) {
         this.logger.log("_makeChart",releases);
         
@@ -77,7 +84,7 @@ Ext.define('CustomApp', {
             calculatorType: 'TechnicalServices.burndown.DefectTrendCalculator',
             calculatorConfig: {
                 releaseObjectIDs:release_oids,
-                timeZone: "America/Denver",
+                timeZone: this._getUserTimeZone(),
                 startDate: startDate,
                 endDate: endDate,
                 granularity: 'day',

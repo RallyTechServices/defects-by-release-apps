@@ -86,6 +86,13 @@ Ext.define('CustomApp', {
         });
         return deferred;
     },
+    _getUserTimeZone: function() {
+        var tz = this.getContext().getUser().UserProfile.TimeZone;
+        if (!tz) {
+            tz = this.getContext().getWorkspace().WorkspaceConfiguration.TimeZone;
+        }
+        return tz;
+    },
     _makeChart: function(display_box,releases,allowed_values) {
         this.logger.log("_makeChart",releases,allowed_values);
         var field_to_break_down = this.getSetting('metric_field');
@@ -119,7 +126,7 @@ Ext.define('CustomApp', {
                 releaseObjectIDs:release_oids,
                 fieldName: field_to_break_down,
                 validFieldValues: allowed_values,
-                timeZone: "America/Denver",
+                timeZone: this._getUserTimeZone(),
                 startDate: startDate,
                 endDate: endDate,
                 granularity: 'day',

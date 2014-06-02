@@ -3,11 +3,11 @@
 <head>
     <title>Defect Trend By Release</title>
     <!--  (c) 2014 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Sun Jun 01 2014 15:52:07 GMT-0700 (PDT) -->
+    <!--  Build Date: Sun Jun 01 2014 20:12:48 GMT-0700 (PDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Sun Jun 01 2014 15:52:07 GMT-0700 (PDT)";
-        var CHECKSUM = 6336542150;
+        var APP_BUILD_DATE = "Sun Jun 01 2014 20:12:48 GMT-0700 (PDT)";
+        var CHECKSUM = 6587991411;
     </script>
     
     <script type="text/javascript" src="/apps/2.0rc2/sdk.js"></script>
@@ -338,6 +338,13 @@ Ext.define('CustomApp', {
         });
         return deferred;
     },
+    _getUserTimeZone: function() {
+        var tz = this.getContext().getUser().UserProfile.TimeZone;
+        if (!tz) {
+            tz = this.getContext().getWorkspace().WorkspaceConfiguration.TimeZone;
+        }
+        return tz;
+    },
     _makeChart: function(display_box,releases) {
         this.logger.log("_makeChart",releases);
         
@@ -368,7 +375,7 @@ Ext.define('CustomApp', {
             calculatorType: 'TechnicalServices.burndown.DefectTrendCalculator',
             calculatorConfig: {
                 releaseObjectIDs:release_oids,
-                timeZone: "America/Denver",
+                timeZone: this._getUserTimeZone(),
                 startDate: startDate,
                 endDate: endDate,
                 granularity: 'day',

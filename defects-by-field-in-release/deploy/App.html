@@ -3,11 +3,11 @@
 <head>
     <title>Defects By Field In Release</title>
     <!--  (c) 2014 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Sun Jun 01 2014 20:04:51 GMT-0700 (PDT) -->
+    <!--  Build Date: Sun Jun 01 2014 20:10:59 GMT-0700 (PDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Sun Jun 01 2014 20:04:51 GMT-0700 (PDT)";
-        var CHECKSUM = 10841391720;
+        var APP_BUILD_DATE = "Sun Jun 01 2014 20:10:59 GMT-0700 (PDT)";
+        var CHECKSUM = 11167154797;
     </script>
     
     <script type="text/javascript" src="/apps/2.0rc2/sdk.js"></script>
@@ -361,6 +361,13 @@ Ext.define('CustomApp', {
         });
         return deferred;
     },
+    _getUserTimeZone: function() {
+        var tz = this.getContext().getUser().UserProfile.TimeZone;
+        if (!tz) {
+            tz = this.getContext().getWorkspace().WorkspaceConfiguration.TimeZone;
+        }
+        return tz;
+    },
     _makeChart: function(display_box,releases,allowed_values) {
         this.logger.log("_makeChart",releases,allowed_values);
         var field_to_break_down = this.getSetting('metric_field');
@@ -394,7 +401,7 @@ Ext.define('CustomApp', {
                 releaseObjectIDs:release_oids,
                 fieldName: field_to_break_down,
                 validFieldValues: allowed_values,
-                timeZone: "America/Denver",
+                timeZone: this._getUserTimeZone(),
                 startDate: startDate,
                 endDate: endDate,
                 granularity: 'day',
