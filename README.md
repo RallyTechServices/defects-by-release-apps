@@ -15,3 +15,9 @@ when assigned to the release some time after association), it is counted in this
 The black line represents the number of active defects on any given day in the release.
 The red line represents the number of defects that were ever associated with the release.
 The green line represents the total number of defects that have been closed.
+
+## Defects by Field in Release
+
+A stacked bar chart for every day of the release, showing breakdown by number of defects
+associated with the release on that day, split by a chosen field.  This is a generic use
+for making Priority and State charts.
